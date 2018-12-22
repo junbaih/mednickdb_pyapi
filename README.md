@@ -7,6 +7,7 @@ This is a python api to access the mednicklab database. It implements all get an
 * **Ben Yetton**
 * **Juan Antonio**
 * **Nelly Lyu** 
+* **Junbai Hou**
 
 See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
