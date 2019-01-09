@@ -97,12 +97,13 @@ def _parse_locals_to_data_packet(locals_dict):
 
 
 class MednickAPI:
-    def __init__(self, server_address, username, password):
+    def __init__(self, server_address, username, password, debug=False):
         """server_address address constructor"""
         self.server_address = server_address
         self.s = requests.session()
         self.username = username
         self.login_token = None
+        self.debug = debug
         self.token, self.usertype = self.login(username, password)
         #headers = {'Content-Type': 'application/json'}
         #self.s.headers.update(headers)
@@ -162,7 +163,25 @@ class MednickAPI:
         If this is a brand new file, then add, if it exists, then overwrite. Returns file info object"""
         data_packet = _parse_locals_to_data_packet(locals())
         files = {'fileobject': data_packet.pop('fileobject')}
-        ret = self.s.post(url=self.server_address + '/files/upload', data={'data':json.dumps(data_packet, cls=MyEncoder)}, files=files)
+        if not self.debug:
+            ret = self.s.post(url=self.server_address + '/files/upload', data={'data':json.dumps(data_packet, cls=MyEncoder)}, files=files)
+            #ret = self.s.post(url=self.server_address, data={'data':json.dumps(data_packet, cls=MyEncoder)}, files=files)
+
+        else:
+            #req = requests.Request('POST', self.server_address+'/files/upload', data=data_packet, files=files)
+            req = requests.Request('POST', self.server_address+'/files/upload', data={'data':json.dumps(data_packet, cls=MyEncoder)}, files=files)
+
+            #req = requests.Request('POST', self.server_address ,data=data_packet, files=files)
+            prep = self.s.prepare_request(req)
+            print('request details:')
+            print('\n'.join("%s: %s" % item for item in vars(req).items()))
+            print("prep details:")
+            print(prep.method, prep.headers, prep.body, sep='\n')
+            #print(', '.join("%s: %s" % item for item in vars(prep).items()))
+            ret = self.s.send(prep)
+        #JH upload DEBUG
+        print("upload status:", ret.status_code)
+        #what is ops ? Need further info
         return _json_loads(ret)['ops'][0]
 
     def update_file_info(self, fid, **kwargs):
@@ -200,7 +219,7 @@ class MednickAPI:
     def get_files(self, query=None, previous_versions=False, format='nested_dict', **kwargs):
         """Retrieves a list of files ids for files in the file store that match the above specifiers.
             Any keys in the file profile may be included, and only matching files for all will be returned.
-            Return files are sorted by datemodified.
+            Return a list of file info sorted by datemodified.
         """
         if query:
             for k, v in query_kwmap.items():
@@ -238,23 +257,23 @@ class MednickAPI:
         return _json_loads(self.s.get(url=self.server_address + '/files/downloadmultiple', params={'id': fids_param}))
 
     def delete_multiple(self, fids):
-        """Deletes a list of files coresponding to the given fileids. Not Tested TODO"""
+        """Deletes a list of files coresponding to the given fields. Not Tested TODO"""
         fids_param = '*AND*'.join(fids)
         return _json_loads(self.s.delete(url=self.server_address + '/files/expiremultiple', data={'id': fids_param}))
 
     def get_deleted_files(self):
-        """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
+        """Retrieves a list of fileinfo for deleted files from the file store that match the above specifiers"""
         return _json_loads(self.s.get(url=self.server_address + '/files/expired'))
 
     def get_unparsed_files(self, previous_versions=False):
-        """Return a list of fid's for unparsed files"""
+        """Return a list of fileinfo for unparsed files"""
         files = _json_loads(self.s.get(self.server_address + '/files/unparsed'))
         if not previous_versions:
             files = [file for file in files if file['active']]
         return files
 
     def get_parsed_files(self):
-        """Return a list of fid's for unparsed files"""
+        """Return a list of fileinfos for parsed files"""
         return _json_loads(self.s.get(self.server_address + '/files/parsed'))
 
     def get_unique_var_values(self, var, store, **kwargs):
@@ -402,12 +421,13 @@ class MednickAPI:
         pass
 
 if __name__ == '__main__':
-    med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
+    #med_api = MednickAPI('https://postb.in/nRmchQgu', 'bdyetton@hotmail.com', 'Pass1234',debug=True)
+    med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234',debug=True)
+
     # med_api.delete_all_files(password='nap4life')
     # sys.exit()
     # med_api.delete_data(studyid='TEST')
     # med_api.delete_file(fid='5bb2788f5e52330010f10727')
-
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
         fid = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='scorefile',
@@ -415,59 +435,59 @@ if __name__ == '__main__':
                                   studyid='TEST',
                                   subjectid=1,
                                   versionid=1)
-
-    med_api.upload_data(data={'acc': 0.2, 'std':0.1},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        visitid=1,
-                        filetype='WPA',
-                        fid=fid)
-
-    med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        visitid=2,
-                        filetype='WPA',
-                        fid=fid)
-
-    med_api.upload_data(data={'age': 22, 'sex': 'M'},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        filetype='demo',
-                        fid=fid)
-
-
-    #med_api.delete_data(studyid='TEST')
-    #med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
-    #b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
-    #a = med_api.get_data(studyid='TEST', format='flat_dict')
-
-
-    sys.exit()
-    some_files = med_api.get_files()
-    print('There are', len(some_files), 'files on the server before upload')
-    print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
-    some_files = med_api.get_deleted_files()
-    # print('There are', len(some_files), 'deleted files on the server')
-    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid = med_api.upload_file(fileobject=uploaded_version,
-                                  fileformat='scorefile',
-                                  filetype='Yo',
-                                  studyid='TEST',
-                                  versionid=1)
-    print('We uploaded', len(fid), 'files')
-    #print(fid)
-    some_files = med_api.get_files()
-    print('There are', len(some_files), 'files on the server after upload')
-    print('There are', len(med_api.get_unparsed_files()), 'unparsed files after upload')
-    # print('There are', len(med_api.get_parsed_files()), 'parsed files')
-    # print('There are', med_api.get_studyids('files'), 'studies')
-    # print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
-    print(fid[0])
-    print(med_api.get_file_by_fid(fid[0]))
-    downloaded_version = med_api.download_file(fid[0])
-    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        assert(downloaded_version == uploaded_version.read())
+    #
+    # med_api.upload_data(data={'acc': 0.2, 'std':0.1},
+    #                     studyid='TEST',
+    #                     subjectid=2,
+    #                     versionid=1,
+    #                     visitid=1,
+    #                     filetype='WPA',
+    #                     fid=fid)
+    #
+    # med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
+    #                     studyid='TEST',
+    #                     subjectid=2,
+    #                     versionid=1,
+    #                     visitid=2,
+    #                     filetype='WPA',
+    #                     fid=fid)
+    #
+    # med_api.upload_data(data={'age': 22, 'sex': 'M'},
+    #                     studyid='TEST',
+    #                     subjectid=2,
+    #                     versionid=1,
+    #                     filetype='demo',
+    #                     fid=fid)
+    #
+    #
+    # #med_api.delete_data(studyid='TEST')
+    # #med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
+    # #b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
+    # #a = med_api.get_data(studyid='TEST', format='flat_dict')
+    #
+    #
+    # sys.exit()
+    # some_files = med_api.get_files()
+    # print('There are', len(some_files), 'files on the server before upload')
+    # print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
+    # some_files = med_api.get_deleted_files()
+    # # print('There are', len(some_files), 'deleted files on the server')
+    # with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
+    #     fid = med_api.upload_file(fileobject=uploaded_version,
+    #                               fileformat='scorefile',
+    #                               filetype='Yo',
+    #                               studyid='TEST',
+    #                               versionid=1)
+    # print('We uploaded', len(fid), 'files')
+    # #print(fid)
+    # some_files = med_api.get_files()
+    # print('There are', len(some_files), 'files on the server after upload')
+    # print('There are', len(med_api.get_unparsed_files()), 'unparsed files after upload')
+    # # print('There are', len(med_api.get_parsed_files()), 'parsed files')
+    # # print('There are', med_api.get_studyids('files'), 'studies')
+    # # print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
+    # print(fid[0])
+    # print(med_api.get_file_by_fid(fid[0]))
+    # downloaded_version = med_api.download_file(fid[0])
+    # with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
+    #     assert(downloaded_version == uploaded_version.read())
