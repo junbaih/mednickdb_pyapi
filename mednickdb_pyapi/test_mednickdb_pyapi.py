@@ -1,4 +1,4 @@
-from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
+from mednickdb_pyapi.mednickdb_pyapi import MednickAPI, NoImplementError
 import pytest
 import time
 
@@ -10,6 +10,16 @@ server_address = 'http://saclab.ss.uci.edu:8000'
 @pytest.fixture(scope="module")
 def mednickAPI_setup():
     return MednickAPI(server_address, user , password)
+
+def recursive_search_val(d,key,val):
+    if key in d:
+        return d[key]==val
+    for k in d:
+        if type(d[k])==dict:
+            if recursive_search_val(d[k],key,val):
+                return True
+    return False
+
 
 def test_login(mednickAPI_setup):
     """Test login, this will always pass until we deal with login"""
@@ -137,58 +147,94 @@ def test_update_file_info(mednickAPI_setup):
     new_file_ver = 99
     new_file_sub_id= 99
     new_file_study_id = 'testFileInfoUpload'
+    try:
+        med_api.update_file_info(fid,
+                                 fileformat=new_file_format,
+                                 filetype=new_file_type,
+                                 studyid=new_file_study_id,
+                                 subjectid=new_file_sub_id,
+                                 versionid=new_file_ver)
+        new_file = med_api.get_files(filename='TEST_Demographics.xlsx')[0]
+        new_fid = new_file['_id']
 
-    med_api.update_file_info(fid,
-                             fileformat=new_file_format,
-                             filetype=new_file_type,
-                             studyid=new_file_study_id,
-                             subjectid=new_file_sub_id,
-                             versionid=new_file_ver)
-    new_file = med_api.get_files(filename='TEST_Demographics.xlsx')[0]
-    new_fid = new_file['_id']
+        assert new_file['fileformat'] == new_file_format
+        assert new_file["filetype"] == new_file_type
+        assert new_file['versionid'] == new_file_ver
+        assert new_file['subjectid'] == new_file_sub_id
+        assert new_file['studyid'] == new_file_study_id
 
-    assert new_file['fileformat'] == new_file_format
-    assert new_file["filetype"] == new_file_type
-    assert new_file['versionid'] == new_file_ver
-    assert new_file['subjectid'] == new_file_sub_id
-    assert new_file['studyid'] == new_file_study_id
-
+    except NoImplementError:
+        return
     #revert change
-    med_api.update_file_info(new_fid,
-                             fileformat=old_file_format,
-                             filetype=old_file_type,
-                             studyid=old_file_study_id,
-                             subjectid=old_file_sub_id,
-                             versionid=old_file_ver)
 
-    assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['fileformat'] == old_file_format
-    assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]["filetype"] == old_file_type
-    assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['versionid'] == old_file_ver
-    assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['subjectid'] == old_file_sub_id
-    assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['studyid'] == old_file_study_id
+    # med_api.update_file_info(new_fid,
+    #                          fileformat=old_file_format,
+    #                          filetype=old_file_type,
+    #                          studyid=old_file_study_id,
+    #                          subjectid=old_file_sub_id,
+    #                          versionid=old_file_ver)
+    #
+    # assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['fileformat'] == old_file_format
+    # assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]["filetype"] == old_file_type
+    # assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['versionid'] == old_file_ver
+    # assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['subjectid'] == old_file_sub_id
+    # assert med_api.get_files(filename='TEST_Demographics.xlsx')[0]['studyid'] == old_file_study_id
+    #
+    # # another test case
+    # fids = med_api.get_files(studyid='TEST')
+    # file_info_1 = med_api.get_file_by_fid(fid=fids[0]['_id'])
+    # to_add = {'sessionid': 10}
+    # med_api.update_file_info(fid=fids[0]['_id'], file_info=to_add)
+    # file_info_1.update(to_add)
+    # time.sleep(file_update_time)  # Give db 5 seconds to update
+    #
+    # file_info_2 = med_api.get_file_by_fid(fids[0]['_id'])
+    # assert (file_info_2 == file_info_1)
 
 def test_update_parsed_status(mednickAPI_setup):
     #med_api = MednickAPI(server_address, user, password)
     med_api = mednickAPI_setup
-    old_files = med_api.get_files(studyid='TEST')
-    fid_list = med_api.extract_var(old_files, "_id")
-    parsed_status_list = med_api.extract_var(old_files,"parsed")
-    # guard
-    assert len(fid_list) == len(parsed_status_list)
-    for i in range(len(fid_list)):
-        med_api.update_parsed_status(fid_list[i], not parsed_status_list[i])
+    with open('testfiles/test_text_1.txt', 'r') as text1:
 
-    new_files = med_api.get_files(studyid='TEST')
-    # check if new files are retrieved in the same order as the old files
-    new_fid_list = med_api.extract_var(new_files, "_id")
-    new_parsed_status_list = med_api.extract_var(new_files, "parsed")
-    # change parsed status shall not effect DB _id field
-    assert fid_list == new_fid_list
-    assert parsed_status_list == [i for i in map(lambda x:not x,new_parsed_status_list)]
-
-    #revert
-    for i in range(len(fid_list)):
-        med_api.update_parsed_status(fid_list[i], parsed_status_list[i])
+        text1_info = med_api.upload_file(fileobject=text1,
+                                   fileformat='txt',
+                                   studyid='TEST',
+                                   subjectid=1,
+                                   versionid=1,
+                                   filetype='text_1')
+    unparsed = med_api.get_files(studyid='TEST')
+    unparsed_fid = set()
+    for i in unparsed:
+        if not i['parsed']:
+            unparsed_fid.add(i['_id'])
+    for id in unparsed_fid:
+        med_api.update_parsed_status(id,True)
+    files = med_api.get_files(studyid='TEST')
+    for i in files:
+        if i['_id'] in unparsed_fid:
+            assert i['parsed']
+    # old_files = med_api.get_files(studyid='TEST', fileformat='txt')
+    # fid_list = med_api.extract_var(old_files, "_id")
+    # parsed_status_list = med_api.extract_var(old_files,"parsed")
+    # # guard
+    # print("fid list:")
+    # print(fid_list)
+    # for i in range(len(fid_list)):
+    #     med_api.update_parsed_status(fid_list[i], not parsed_status_list[i])
+    # time.sleep(5)
+    # new_files = med_api.get_files(studyid='TEST', fileformat='txt')
+    # # check if new files are retrieved in the same order as the old files
+    # new_fid_list = med_api.extract_var(new_files, "_id")
+    # print("new fid list:")
+    # print(new_fid_list)
+    # new_parsed_status_list = med_api.extract_var(new_files, "parsed")
+    # # change parsed status shall not effect DB _id field
+    # assert fid_list == new_fid_list
+    # assert parsed_status_list == [i for i in map(lambda x:not x,new_parsed_status_list)]
+    #
+    # #revert
+    # for i in range(len(fid_list)):
+    #     med_api.update_parsed_status(fid_list[i], parsed_status_list[i])
 
 def test_get_file_by_id(mednickAPI_setup):
     #med_api = MednickAPI(server_address, user, password)
@@ -228,29 +274,92 @@ def test_download_files(mednickAPI_setup):
         assert files[0] == text1.read()
         assert files[1] == text2.read()
 
+
+
+
+
+
 def test_delete_multiple_and_get_delete_files(mednickAPI_setup):
     med_api = mednickAPI_setup
     files = med_api.get_files(studyid='TEST', filetype='text_1')
     fids_to_delete = med_api.extract_var(files,"_id")
-    med_api.delete_multiple(fids_to_delete)
-    assert not med_api.get_files(studyid='TEST', filetype='text_1')
-    deleted_fids = med_api.extract_var(med_api.get_deleted_files(), "_id")
-    for id in fids_to_delete:
-        assert id in deleted_fids
+    try:
+        med_api.delete_multiple(fids_to_delete)
+        assert not med_api.get_files(studyid='TEST', filetype='text_1')
+        deleted_fids = med_api.extract_var(med_api.get_deleted_files(), "_id")
+        for id in fids_to_delete:
+            assert id in deleted_fids
+    except NoImplementError:
+        return
 
-#def test_get_deleted_files():
-#    return
-@pytest.mark.dependency(['test_update_parsed_status'])
-def test_get_unparsed_files(mednickAPI_setup):
+def test_upload_data_and_get_data(mednickAPI_setup):
     med_api = mednickAPI_setup
-    unparsed_files = med_api.get_files(previous_versions=True, studyid='TEST', filetype='text_1')
-    unparsed_fids = med_api.extract_var(unparsed_files,"_id")
-    unparsed_fids.sort()
-    for i in unparsed_fids:
-        med_api.update_parsed_status(i, False)
-    retrieved_fids = med_api.extract_var(med_api.get_unparsed_files(previous_versions=True), "_id")
-    retrieved_fids.sort()
-    assert unparsed_fids == retrieved_fids
+    file1 = med_api.get_files(filename='scorefile1.mat')[0]
+    fid = file1['_id']
+    studyid = file1['studyid']
+    verid = file1['versionid']
+    ftype = file1['filetype']
+    subid = file1['subjectid']
+    ret = med_api.upload_data({'hello':'world','valid':False},studyid,verid,ftype,fid,subid)
+
+    d1 = med_api.get_data(format='nested_dict',studyid='TEST')
+
+
+    assert any([recursive_search_val(i,'hello','world') for i in d1])
+    assert any([recursive_search_val(i,'valid',False) for i in d1])
+    assert not any([recursive_search_val(i,'hello1','world') for i in d1])
+
+#
+def test_delete_data(mednickAPI_setup):
+    med_api = mednickAPI_setup
+    dl1 = med_api.get_data(format='nested_dict', studyid='TEST')
+    data_id = med_api.extract_var(dl1, '_id')
+    to_delete = data_id[0]
+    med_api.delete_data(id=to_delete)
+    dl2 = med_api.get_data(format='nested_dict', studyid='TEST')
+    assert to_delete not in med_api.extract_var(dl2, '_id')
+
+
+
+@pytest.mark.dependency(['test_upload_data_and_get_data'])
+def test_get_and_delete_data_from_single_file(mednickAPI_setup):
+    med_api = mednickAPI_setup
+    file = med_api.get_files(studyid='TEST')[0]
+    #print(file)
+    fid = file['_id']
+    studyid = file['studyid']
+    verid = file['versionid']
+    ftype = file['filetype']
+    subid = file['subjectid']
+    ret = med_api.upload_data({'hello':'world','valid':False,'point':3.5},studyid,verid,ftype,fid,subid)
+    d = med_api.get_data_from_single_file(file['filetype'],file['_id'],format='nested_dict')
+    #print(d)
+    assert any([recursive_search_val(i,'hello', 'world') for i in d])
+    assert any([recursive_search_val(i,'valid', False) for i in d])
+    assert any([recursive_search_val(i, 'point',3.5) for i in d])
+
+    med_api.delete_data_from_single_file(fid)
+    assert not len(med_api.get_data_from_single_file(file['filetype'],file['_id'],format='nested_dict'))
+
+#
+# @pytest.mark.dependency(['test_get_data_from_single_file'])
+# def test_delete_data_from_single_file(mednickAPI_setup):
+#     med_api = mednickAPI_setup
+#     file = med_api.get_files(studyid='TEST')[0]
+#     #print(file)
+#     fid = file['_id']
+#     studyid = file['studyid']
+#     verid = file['versionid']
+#     ftype = file['filetype']
+#     subid = file['subjectid']
+#     ret = med_api.upload_data({'hello':'world','valid':False,'point':3.5},studyid,verid,ftype,fid,subid)
+#
+#     d = med_api.get_data_from_single_file(file['filetype'],file['_id'],format='nested_dict')
+
+# def test_delete_all_files(mednickAPI_setup):
+#    med_api = mednickAPI_setup
+#    med_api.delete_all_files('')
+
 
 @pytest.mark.dependency(['test_update_parsed_status'])
 def test_get_parsed_files(mednickAPI_setup):
@@ -259,41 +368,113 @@ def test_get_parsed_files(mednickAPI_setup):
     unparsed_fids = med_api.extract_var(unparsed_files,"_id")
     for i in unparsed_fids:
         med_api.update_parsed_status(i, True)
-    retrieved_fids = med_api.extract_var(med_api.get_parsed_files(previous_versions=True), "_id")
+    retrieved_fids = med_api.extract_var(med_api.get_parsed_files(), "_id")
     for i in unparsed_fids:
         assert i in retrieved_fids
 
     #revert change
-    for i in unparsed_fids:
-        med_api.update_parsed_status(i, False)
+    # for i in unparsed_fids:
+    #     med_api.update_parsed_status(i, False)
 
-def test_get_unique_var_values():
-    return
+def test_get_delete_files(mednickAPI_setup):
+    test_clear_test_study(mednickAPI_setup)
+    med_api = mednickAPI_setup
+    files = med_api.get_files(studyid='TEST', filetype='text_1')
+    with open('testfiles/test_text_1.txt', 'r') as text1:
+        text1_info = med_api.upload_file(fileobject=text1,
+                                   fileformat='txt',
+                                   studyid='TEST',
+                                   subjectid=1,
+                                   versionid=1,
+                                   filetype='text_1')
+        fid = text1_info['_id']
+        med_api.delete_file(fid)
+        fids = med_api.get_files(fileobject=text1,
+                                   fileformat='txt',
+                                   studyid='TEST',
+                                   subjectid=1,
+                                   versionid=1,
+                                   filetype='text_1')
+        fids = med_api.extract_var(fids,'_id')
+        assert fid not in fids
 
-def test_upload_data():
-    return
 
-def test_get_data():
-    return
+def test_get_unique_var_values(mednickAPI_setup):
+    test_clear_test_study(mednickAPI_setup)
+    med_api = mednickAPI_setup
+    with open('testfiles/test_text_1.txt', 'r') as text1,\
+            open('testfiles/test_text_2.txt', 'r') as text2:
+        text1_info = med_api.upload_file(fileobject=text1,
+                                   fileformat='txt',
+                                   studyid='TEST',
+                                   subjectid=1,
+                                   versionid=1,
+                                   filetype='text_1')
 
-def test_delete_data():
-    return
+        text2_info = med_api.upload_file(fileobject=text2,
+                                   fileformat='txt',
+                                   studyid='TEST',
+                                   subjectid=2,
+                                   versionid=1,
+                                   filetype='text_2')
+    vals1 = med_api.get_unique_var_values('filetype','files')
+    vals1.sort()
+    assert vals1 == ['text_1','text_2']
+    vals2 = med_api.get_unique_var_values('subjectid','files')
+    vals2.sort()
+    assert vals2 == [1,2]
 
-def test_get_data_from_single_file():
-    return
+@pytest.mark.dependency(['test_update_parsed_status'])
+def test_get_unparsed_files(mednickAPI_setup):
+    #test_clear_test_study(mednickAPI_setup)
+    med_api = mednickAPI_setup
+    unparsed_files = med_api.get_files(previous_versions=True, studyid='TEST')
+    toCut = []
+    temp = []
+    for i in range(len(unparsed_files)):
+        if unparsed_files[i]['parsed']:
+            print(unparsed_files[i]['_id'])
+            toCut.append(i)
+    for i in range(len(unparsed_files)):
+        if i not in toCut:
+            temp.append(unparsed_files[i])
+    unparsed_files = temp
+    unparsed_fids = med_api.extract_var(unparsed_files,"_id")
+    unparsed_fids.sort()
 
-def test_delete_data_from_single_file():
-    return
+    retrieved_fids = med_api.extract_var(med_api.get_unparsed_files(previous_versions=True), "_id")
+    retrieved_fids.sort()
+    print(unparsed_fids,"\n")
+    print(retrieved_fids)
+    assert unparsed_fids == retrieved_fids
 
-#def test_delete_all_files():
-#    return
-
+def test_upload_and_get_long_name_file(mednickAPI_setup):
+    med_api = mednickAPI_setup
+    with open('testfiles/longname.ipynb', 'rb') as longfile:
+        fformat = 'jupyternb'
+        ftype = 'ML'
+        med_api.upload_file(fileobject=longfile,
+                                   fileformat=fformat,
+                                   studyid='TEST',
+                                   subjectid=1,
+                                   versionid=1,
+                                   filetype=ftype)
+        f = med_api.get_files(fileformat=fformat,
+                                   studyid='TEST',
+                                   subjectid=1,
+                                   versionid=1,
+                                   filetype=ftype)
+        f = f[0]
+        assert fformat == f['fileformat']
+        assert ftype == f['filetype']
+        assert 'longname.ipynb'==f['filename'] #the one fails
 
 @pytest.mark.dependency(['test_upload_and_overwrite'])
-def test_file_query():
+def test_file_query(mednickAPI_setup):
     """Upload a bunch of files to the server, and query them using all the types of querying available"""
-    test_clear_test_study()  # Start Fresh
-    med_api = MednickAPI(server_address, user, password)
+    test_clear_test_study(mednickAPI_setup)  # Start Fresh
+    #med_api = MednickAPI(server_address, user, password)
+    med_api = mednickAPI_setup
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
         file_info1 = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='scorefile',
@@ -368,16 +549,16 @@ def test_file_query():
     assert all([fid in fids for fid in [fid1, fid3]])
 
 @pytest.mark.dependency(['test_upload_data'])
-def test_data_query():
-    med_api = MednickAPI(server_address, user, password)
-
+def test_data_query(mednickAPI_setup):
+    #med_api = MednickAPI(server_address, user, password)
+    med_api = mednickAPI_setup
     def dict_is_subset(superset, subset):
         return all(item in superset.items() for item in subset.items())
 
     def strip_non_matching_keys(strip_from, template):
         return {k: v for k, v in strip_from.items() if k in template}
 
-    test_clear_test_study()
+    test_clear_test_study(mednickAPI_setup)
 
     with open('testfiles/TEST_Demographics.xlsx', 'rb') as uploaded_version_1:
         file_info1 = med_api.upload_file(fileobject=uploaded_version_1,
