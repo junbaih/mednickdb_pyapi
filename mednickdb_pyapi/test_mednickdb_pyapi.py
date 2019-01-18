@@ -9,7 +9,7 @@ server_address = 'http://saclab.ss.uci.edu:8000'
 
 @pytest.fixture(scope="module")
 def mednickAPI_setup():
-    return MednickAPI(server_address, user , password)
+    return MednickAPI(user, password)
 
 def recursive_search_val(d,key,val):
     if key in d:

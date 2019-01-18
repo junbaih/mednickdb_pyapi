@@ -29,13 +29,12 @@ param_map = {
     'fid':'id',
 }
 
-<<<<<<< HEAD
+
 class NoImplementError(Exception):
     pass
 
-=======
 # Dict to help convert human readable queries into mongo-esqe queries handeled by backend
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
+
 query_kwmap = OrderedDict({
     ' and ': '&',
     ' or ': '*OR*',
@@ -148,11 +147,9 @@ def _parse_locals_to_data_packet(locals_dict):
 
 
 class MednickAPI:
-<<<<<<< HEAD
-    def __init__(self, server_address, username, password, debug=False):
-=======
-    def __init__(self, username, password, server_address='http://saclab.ss.uci.edu:8000'):
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
+
+    def __init__(self, username, password, server_address='http://saclab.ss.uci.edu:8000',debug=False):
+
         """server_address address constructor"""
         self.server_address = server_address
         self.s = requests.session()
@@ -334,11 +331,7 @@ class MednickAPI:
         return _json_loads(ret)['ops'][0]
 
     def update_file_info(self, fid, **kwargs):
-<<<<<<< HEAD
-        """Change the location of a file on the datastore and update its info. Returns?"""
 
-        raise NoImplementError("not implemented")
-=======
         """
         Change the location of a file on the datastore and update its info.
         :param fid: fid of file to update
@@ -347,7 +340,8 @@ class MednickAPI:
         :return: Updated file info.
         :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
+
+        raise NoImplementError("not implemented")
         data_packet = _parse_locals_to_data_packet(locals())
         if not self.debug:
             ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
@@ -364,10 +358,16 @@ class MednickAPI:
             ret = self.s.send(prep)
         return _json_loads(ret) #TODO should return file info
 
-<<<<<<< HEAD
-    def update_parsed_status(self, fid, status):
-        """Change the parsed status of a file. Status is True when parsed or False otherwise"""
-        # FIXME as of 1.2.2 this function does not take status
+
+    def update_parsed_status(self, fid, status: bool):
+        """
+        Change the parsed status of a file. Status is True when parsed or False otherwise
+        :param fid: the fid of the file to change
+        :param status: The status (True | false) to change to  FIXME as of 1.2.2 this function does not take status, and can only go from false->true
+        :return: None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
+        """
+
         if not self.debug:
             ret = self.s.put(url=self.server_address + '/files/updateParsedStatus', data={'id':fid, 'status':status})
         else:
@@ -384,18 +384,6 @@ class MednickAPI:
             ret = self.s.send(prep)
             # JH upload DEBUG
         print("upload status:", ret.status_code)
-=======
-    def update_parsed_status(self, fid, status: bool):
-        """
-        Change the parsed status of a file. Status is True when parsed or False otherwise
-        :param fid: the fid of the file to change
-        :param status: The status (True | false) to change to  FIXME as of 1.2.2 this function does not take status, and can only go from false->true
-        :return: None
-        :raises ServerError when server throws error, ResponseError when server returns something other than 200
-        """
-
-        ret = self.s.put(url=self.server_address + '/files/updateParsedStatus', data={'id':fid, 'status':status})
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
         return _json_loads(ret)
 
     def delete_file(self, fid, delete_all_versions=False,
@@ -422,12 +410,7 @@ class MednickAPI:
         data = {name_map[k]: v for k, v in locals_vars.items()}
         _json_loads(self.s.post(self.server_address + '/files/expire', data=data)) #check for error
 
-<<<<<<< HEAD
-    def get_files(self, query=None, previous_versions=False, format='nested_dict', **kwargs):
-        """Retrieves a list of file info from files in the file store that match the above specifiers.
-           When querying, any keys in the file profile may be included, and only matching files for all will be returned.
-           Return file info's are sorted by datemodified, see format_as for return format options.
-=======
+
     def get_files(self, query: str=None, previous_versions: bool=False, format: str='nested_dict', **kwargs):
         """
         Retrieves a list of file info from files in the file store that match the above specifiers.
@@ -457,7 +440,6 @@ class MednickAPI:
         :param kwargs: alternative way to query params, e.g. get_files(studyid='TEST') or get_files(kwargs={'studyid':'TEST'})
         :return: a list/dataframe of file_info objects that match
         :raises ServerError when server throws error, ResponseError when server returns something other than 200
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
         """
         if query:
             for k, v in query_kwmap.items():
@@ -526,26 +508,15 @@ class MednickAPI:
         return _json_loads(ret)
 
     def delete_multiple(self, fids):
-<<<<<<< HEAD
-        """Deletes a list of files coresponding to the given fields. Not Tested TODO"""
 
-        raise NoImplementError("not implemented")
-        fids_param = '*AND*'.join(fids)
-        return _json_loads(self.s.delete(url=self.server_address + '/files/expiremultiple', data={'id': fids_param}))
-
-    def get_deleted_files(self):
-        """Retrieves a list of fileinfo for deleted files from the file store that match the above specifiers"""
-        return _json_loads(self.s.get(url=self.server_address + '/files/expired'))
-
-    def get_unparsed_files(self, previous_versions=False):
-        """Return a list of fileinfo for unparsed files"""
-=======
         """
         Deletes a list of files corresponding to the given fids.
         :param fids: list of fids to delete
         :return: None
         :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
+
+
         for fid in fids:
             self.delete_file(fid=fid)
 
@@ -564,17 +535,12 @@ class MednickAPI:
         :return: file_infos of unparsed files
         :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
         files = _json_loads(self.s.get(self.server_address + '/files/unparsed'))
         if not previous_versions:
             files = [file for file in files if file['active']]
         return files
 
-<<<<<<< HEAD
-    def get_parsed_files(self):
-        """Return a list of fileinfos for parsed files"""
-        return _json_loads(self.s.get(self.server_address + '/files/parsed'))
-=======
+
     def get_parsed_files(self, previous_versions=False):
         """
         Return a list of fid's for parsed files
@@ -586,7 +552,7 @@ class MednickAPI:
         if not previous_versions:
             files = [file for file in files if file['active']]
         return files
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
+
 
     def get_unique_var_values(self, var, store, **kwargs):
         """
@@ -746,9 +712,13 @@ class MednickAPI:
         return self.get_data('data.'+filetype+'.sourceid='+fid, format=format)
 
     def delete_data_from_single_file(self, fid):
-<<<<<<< HEAD
-        """ Deletes the data in the datastore associated with a file
-        (i.e. get the data that was extracted from that file on upload)"""
+        """
+        Deletes the data in the datastore associated with a file
+        (i.e. get the data that was extracted from that file on upload)
+        :param fid:
+        :return: None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
+        """
         if not self.debug:
             ret = self.s.delete(self.server_address + '/data/expireByFile', data={'id':fid})
         else:
@@ -770,20 +740,6 @@ class MednickAPI:
             # response = _json_loads(resp)
         return _json_loads(ret)
 
-    def delete_all_files(self, password):
-        """Delete all files on the DB, use with extreme caution"""
-        if password == 'nap4life': #this obviously doesn't work
-=======
-        """
-        Deletes the data in the datastore associated with a file
-        (i.e. get the data that was extracted from that file on upload)
-        :param fid:
-        :return: None
-        :raises ServerError when server throws error, ResponseError when server returns something other than 200
-        """
-        ret = self.s.delete(self.server_address + '/data/expireByFile', data={'id':fid})
-        return _json_loads(ret)
-
     def _delete_all_files(self, password):
         """
         Delete all files on the DB, use with extreme caution. Do you really need to use this?
@@ -792,7 +748,6 @@ class MednickAPI:
         :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         if password == 'i_am_deleting_everything':
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
             files = self.get_files()
             print(len(files), 'found, beginning delete of ALL FILES on the server...')
             for file in files:
@@ -810,21 +765,16 @@ class MednickAPI:
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    #med_api = MednickAPI('https://postb.in/nRmchQgu', 'bdyetton@hotmail.com', 'Pass1234',debug=True)
-    med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234',debug=True)
-    print('')
-=======
 
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
     #med_api = MednickAPI('https://postb.in/odTme5YI', 'bdyetton@hotmail.com', 'Pass1234')
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
+
     # med_api.delete_all_files(password='nap4life')
     # sys.exit()
     # med_api.delete_data(studyid='TEST')
     # med_api.delete_file(fid='5bb2788f5e52330010f10727')
 
-<<<<<<< HEAD
+
     # print('update fileinfo')
     # old_file = med_api.get_files(filename='TEST_Demographics.xlsx')[0]
     # #print(old_file)
@@ -1169,9 +1119,6 @@ if __name__ == '__main__':
     # print(fids)
 
 
-
-=======
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
     # with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
     #     fid = med_api.upload_file(fileobject=uploaded_version,
     #                               fileformat='scorefile',
@@ -1179,31 +1126,18 @@ if __name__ == '__main__':
     #                               studyid='TEST',
     #                               subjectid=1,
     #                               versionid=1)
-<<<<<<< HEAD
 
-    #
+
+
     # med_api.upload_data(data={'acc': 0.2, 'std':0.1},
     #                     studyid='TEST',
     #                     subjectid=2,
     #                     versionid=1,
     #                     visitid=1,
     #                     filetype='WPA',
-    #                     fid=fid)
-    #
-=======
-    #
-    # sys.exit()
+    #                     fid='as5123412345')
 
 
-    med_api.upload_data(data={'acc': 0.2, 'std':0.1},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        visitid=1,
-                        filetype='WPA',
-                        fid='as5123412345')
-
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
     # med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
     #                     studyid='TEST',
     #                     subjectid=2,
@@ -1218,16 +1152,16 @@ if __name__ == '__main__':
     #                     versionid=1,
     #                     filetype='demo',
     #                     fid=fid)
-<<<<<<< HEAD
-    #
-    #
-    # #med_api.delete_data(studyid='TEST')
-    # #med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
-    # #b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
-    # #a = med_api.get_data(studyid='TEST', format='flat_dict')
-    #
-    #
-    # sys.exit()
+
+
+
+    #med_api.delete_data(studyid='TEST')
+    #med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
+    #b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
+    #a = med_api.get_data(studyid='TEST', format='flat_dict')
+
+
+
     # some_files = med_api.get_files()
     # print('There are', len(some_files), 'files on the server before upload')
     # print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
@@ -1252,62 +1186,4 @@ if __name__ == '__main__':
     # downloaded_version = med_api.download_file(fid[0])
     # with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
     #     assert(downloaded_version == uploaded_version.read())
-
-    print('test_case3')
-    # fids = med_api.extract_var(med_api.get_files(studyid='TEST'), '_id')
-    # if fids:
-    #     for fid in fids:
-    #         med_api.delete_file(fid, delete_all_versions=True)
-    #         med_api.delete_data_from_single_file(fid)
-    #     fids2 = med_api.extract_var(med_api.get_files(studyid='TEST'),'_id')
-    #     assert fid not in fids2
-    #     assert (fids2 == [])
-    #     deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')
-    #     assert all([dfid in deleted_fids for dfid in fids])
-    # med_api.delete_data(studyid='TEST')
-    # assert len(med_api.get_data(studyid='TEST', format='nested_dict')) == 0 #TODO after clearing up sourceid bug
-
-    # fid_for_manual_upload = med_api.extract_var(med_api.get_files(studyid='TEST'), '_id')[0] # get a random fid
-    # data_post = {'studyid': 'TEST',
-    #              'filetype': 'MemTaskA',
-    #              'data': {'accuracy': 0.9},
-    #              'versionid': 1,
-    #              'subjectid': 2,
-    #              'visitid': 1,
-    #              'sessionid': 1}
-    # med_api.upload_data(**data_post, fid=fid_for_manual_upload)
-=======
-
-
-    #med_api.delete_data(studyid='TEST')
-    #med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
-    #b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
-    #a = med_api.get_data(studyid='TEST', format='flat_dict')
-
-
-
-    some_files = med_api.get_files()
-    print('There are', len(some_files), 'files on the server before upload')
-    print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
-    some_files = med_api.get_deleted_files()
-    # print('There are', len(some_files), 'deleted files on the server')
-    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid = med_api.upload_file(fileobject=uploaded_version,
-                                  fileformat='scorefile',
-                                  filetype='Yo',
-                                  studyid='TEST',
-                                  versionid=1)
-    print('We uploaded', len(fid), 'files')
-    #print(fid)
-    some_files = med_api.get_files()
-    print('There are', len(some_files), 'files on the server after upload')
-    print('There are', len(med_api.get_unparsed_files()), 'unparsed files after upload')
-    # print('There are', len(med_api.get_parsed_files()), 'parsed files')
-    # print('There are', med_api.get_studyids('files'), 'studies')
-    # print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
-    print(fid[0])
-    print(med_api.get_file_by_fid(fid[0]))
-    downloaded_version = med_api.download_file(fid[0])
-    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        assert(downloaded_version == uploaded_version.read())
->>>>>>> 818763a70d1058e72ddecfea7e07b88e42b39f3b
+    #
