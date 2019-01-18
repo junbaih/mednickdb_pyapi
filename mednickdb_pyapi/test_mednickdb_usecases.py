@@ -138,8 +138,9 @@ def test_usecase_3():
                  'subjectid': 2,
                  'visitid': 1,
                  'sessionid': 1}
-    med_api.upload_data(**data_post, fid=fid_for_manual_upload)
-
+    log = med_api.upload_data(**data_post, fid=fid_for_manual_upload)
+    print('testcase3 log:')
+    print(log)
     # b)
     time.sleep(5)  # Give db 5 seconds to update
     correct_filename_versions = [pytest.usecase_1_filename_version, pytest.usecase_2_filename_version]
