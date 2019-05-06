@@ -1,5 +1,5 @@
 
-### This REPO IS NOT LONGER IN DEV. Please use the bitbucket version ###
+### This REPO IS NOT LONGER IN DEV. Please use the [bitbucket](https://bitbucket.org/mednicklab/mednickdb_pyapi/src/master/) version ###
 
 # python_module
 
